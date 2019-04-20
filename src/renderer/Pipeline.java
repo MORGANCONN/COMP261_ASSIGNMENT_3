@@ -27,7 +27,7 @@ public class Pipeline {
         // V3-V2
         Vector3D tempVector2 = poly.getVertices()[2].minus(poly.getVertices()[1]);
         // (V2-V1)X(V3-V2)
-        Vector3D normal = tempVector1.crossProduct(tempVector2);
+        Vector3D normal = tempVector1.crossProduct(tempVector2).unitVector();
         if (normal.z > 0) {
             return true;
         } else {
@@ -87,8 +87,30 @@ public class Pipeline {
      * rotated accordingly.
      */
     public static Scene rotateScene(Scene scene, float xRot, float yRot) {
-        // TODO fill this in.
-        return null;
+            List<Polygon> rotatedPolygons = new ArrayList<>(scene.getPolygons());
+            Vector3D lightToRotate = scene.getLight();
+            // Calculates rotation matrices
+            Transform xRotation = Transform.newXRotation(xRot);
+            Transform yRotation = Transform.newYRotation(yRot);
+            // Rotates all vertices of all polygons
+            for(Polygon p : rotatedPolygons){
+                for(int i = 0;i<3;i++){
+                    if(xRot!=0){
+                        p.getVertices()[i] = xRotation.multiply(p.getVertices()[i]);
+                    }
+                    if(yRot!=0){
+                        p.getVertices()[i] = yRotation.multiply(p.getVertices()[i]);
+                    }
+                }
+            }
+            if(xRot!=0){
+                lightToRotate = xRotation.multiply(lightToRotate);
+            }
+            if(yRot!=0){
+                lightToRotate = yRotation.multiply(lightToRotate);
+            }
+            return new Scene(rotatedPolygons, lightToRotate);
+
     }
 
     /**
@@ -98,8 +120,44 @@ public class Pipeline {
      * @return
      */
     public static Scene translateScene(Scene scene) {
-        // TODO fill this in.
-        return null;
+        if(scene == null){
+            return  null;
+        }
+        float xTranslationAmount = Float.MAX_VALUE, yTranslationAmount = Float.MAX_VALUE;
+        for (Polygon p : scene.getPolygons()) {
+            for (Vector3D v : p.getVertices()) {
+                xTranslationAmount = Math.min(xTranslationAmount, v.x);
+                yTranslationAmount = Math.min(yTranslationAmount, v.y);
+            }
+        }
+        List<Polygon> translatedPolygons = new ArrayList<>(scene.getPolygons());
+        Transform translate = Transform.newTranslation(new Vector3D(-xTranslationAmount, -yTranslationAmount, 0));
+        for (Polygon p : translatedPolygons) {
+            for (int i = 0; i < 3; i++) {
+                p.getVertices()[i] = translate.multiply(p.getVertices()[i]);
+            }
+        }
+        return new Scene(translatedPolygons, scene.getLight());
+    }
+
+    /**
+     * Finds the max and min x and y values of the vectors of the polygons of the supplied scene
+     *
+     * @param scene the scene object to find the max and min x and y coordinates
+     */
+    public static float[] findSceneMinMax(Scene scene) {
+        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        for (Polygon p : scene.getPolygons()) {
+            for (Vector3D v : p.getVertices()) {
+                minX = Math.min(minX, v.x);
+                minY = Math.min(minY, v.y);
+                maxX = Math.max(maxX, v.x);
+                maxY = Math.max(maxY, v.y);
+            }
+        }
+        float[] maxAndMin = {minX, maxX, minY, maxY};
+        return maxAndMin;
     }
 
     /**
@@ -109,8 +167,37 @@ public class Pipeline {
      * @return
      */
     public static Scene scaleScene(Scene scene) {
-        // TODO fill this in.
-        return null;
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        for (Polygon p : scene.getPolygons()) {
+            for (Vector3D v : p.getVertices()) {
+                minX = Math.min(minX, v.x);
+                minY = Math.min(minY, v.y);
+                maxX = Math.max(maxX, v.x);
+                maxY = Math.max(maxY, v.y);
+            }
+        }
+        float sceneHeight = maxY - minY;
+        float sceneWidth = maxX - minX;
+
+        float scale = 1;
+        boolean useWidth = (sceneWidth - GUI.CANVAS_WIDTH > sceneHeight - GUI.CANVAS_HEIGHT);
+        if (sceneWidth > GUI.CANVAS_WIDTH && useWidth) {
+            scale = GUI.CANVAS_WIDTH / sceneWidth;
+        }
+        if (sceneHeight > GUI.CANVAS_HEIGHT && !useWidth) {
+            scale = GUI.CANVAS_HEIGHT / sceneHeight;
+        }
+
+        Transform scaleMatrix = Transform.newScale(scale, scale, scale);
+
+        ArrayList<Polygon> scaledPolygons = new ArrayList<>(scene.getPolygons());
+        for (Polygon p : scaledPolygons) {
+            for (int i = 0; i < 3; i++) {
+                p.getVertices()[i] = scaleMatrix.multiply(p.getVertices()[i]);
+            }
+        }
+        return new Scene(scaledPolygons, scaleMatrix.multiply(scene.getLight()));
     }
 
     /**
@@ -118,45 +205,44 @@ public class Pipeline {
      * slides.
      */
     public static EdgeList computeEdgeList(Polygon poly) {
-        Vector3D[] polygonVerticies = {poly.getVertices()[0], poly.getVertices()[1], poly.getVertices()[1], poly.getVertices()[2], poly.getVertices()[2], poly.getVertices()[0]};
-        int maxY = Math.max((int) polygonVerticies[0].y, (int) polygonVerticies[1].y);
-        maxY = Math.max(maxY, (int) polygonVerticies[2].y);
-        int minY = Math.max((int) polygonVerticies[0].y, (int) polygonVerticies[1].y);
-        minY = Math.min(minY, (int) polygonVerticies[2].y);
-        HashMap<Integer, Float> minX = new HashMap<>();
-        HashMap<Integer, Float> maxX = new HashMap<>();
-        HashMap<Integer, Float> minZ = new HashMap<>();
-        HashMap<Integer, Float> maxZ = new HashMap<>();
-        for (int i = 0; i < polygonVerticies.length - 1; i += 2) {
-            float xYslope = (polygonVerticies[i + 1].x - polygonVerticies[i].x) / (polygonVerticies[i + 1].y - polygonVerticies[i].y);
-            float zSlope = (polygonVerticies[i+1].z-polygonVerticies[i].z)/(polygonVerticies[i+1].y-polygonVerticies[i].y);
-
-            float x = polygonVerticies[i].x;
-            int y = Math.round(polygonVerticies[i].y);
-            float z = polygonVerticies[i].z;
-            if (polygonVerticies[i].y < polygonVerticies[i + 1].y) {
-                while (y <= Math.round(polygonVerticies[i + 1].y)) {
-                    minX.put(y, x);
-                    minZ.put(y, z);
+        Vector3D[] polygonVerticies = {poly.getVertices()[0], poly.getVertices()[1], poly.getVertices()[2]};
+        int minY = Integer.MAX_VALUE;
+        int maxY = -Integer.MAX_VALUE;
+        for(int i = 0;i<3;i++){
+            if(polygonVerticies[i].y>maxY){
+                maxY = Math.round(poly.getVertices()[i].y);
+            }
+            if(polygonVerticies[i].y<minY){
+                minY = Math.round(poly.getVertices()[i].y);
+            }
+        }
+        EdgeList newEdgeList = new EdgeList(minY, maxY);
+        for (int i = 0; i < polygonVerticies.length ; i ++) {
+            Vector3D a = polygonVerticies[i];
+            Vector3D b = polygonVerticies[(i+1)%3];
+            float xSlope = (b.x - a.x) / (b.y - a.y);
+            float zSlope = (b.z - a.z) / (b.y - a.y);
+            float x = a.x;
+            int y = Math.round(a.y);
+            float z = a.z;
+            if (a.y < b.y) {
+                while (y <= Math.round(b.y)) {
+                    newEdgeList.setLeftX(y, x);
+                    newEdgeList.setLeftZ(y, z);
                     z += zSlope;
-                    x += xYslope;
+                    x += xSlope;
                     y++;
                 }
             } else {
-                while (y >= Math.round(polygonVerticies[i + 1].y)) {
-                    maxX.put(y, x);
-                    maxZ.put(y, z);
+                while (y >= Math.round(b.y)) {
+                    newEdgeList.setRightX(y, x);
+                    newEdgeList.setRightZ(y, z);
                     z -= zSlope;
-                    x -= xYslope;
+                    x -= xSlope;
                     y--;
                 }
             }
         }
-        EdgeList newEdgeList = new EdgeList(minY, maxY);
-        newEdgeList.min.add(minX);
-        newEdgeList.min.add(minZ);
-        newEdgeList.max.add(maxX);
-        newEdgeList.max.add(maxZ);
         return newEdgeList;
     }
 
@@ -175,7 +261,19 @@ public class Pipeline {
      * @param polyColor    The colour of the polygon to add into the zbuffer.
      */
     public static void computeZBuffer(Color[][] zbuffer, float[][] zdepth, EdgeList polyEdgeList, Color polyColor) {
-        // TODO fill this in.
+        for (int y = polyEdgeList.getStartY(); y < polyEdgeList.getEndY(); y++) {
+            float slope = (polyEdgeList.getRightZ(y) - polyEdgeList.getLeftZ(y)) / (polyEdgeList.getRightX(y) - polyEdgeList.getLeftX(y));
+            int x = Math.round(polyEdgeList.getLeftX(y));
+            float z = polyEdgeList.getLeftZ(y);
+            while (x <= Math.round(polyEdgeList.getRightX(y)) - 1) {
+                if ((y>=0&&x>=0&&y<GUI.CANVAS_HEIGHT&&x<GUI.CANVAS_WIDTH)&&z < zdepth[x][y]) {
+                    zbuffer[x][y] = polyColor;
+                    zdepth[x][y] = z;
+                }
+                z = z + slope;
+                x++;
+            }
+        }
     }
 }
 
