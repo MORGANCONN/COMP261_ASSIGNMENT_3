@@ -138,9 +138,9 @@ public class Pipeline {
      * @return
      */
     public static Scene scaleScene(Scene scene) {
-        Rectangle sceneBounds = getSceneBounds(scene);
-        float sceneHeight = sceneBounds.height;
-        float sceneWidth = sceneBounds.width;
+        Line sceneBounds = getSceneBounds(scene);
+        float sceneHeight = (float) (sceneBounds.getEndY()-sceneBounds.getStartY());
+        float sceneWidth = (float) (sceneBounds.getEndX()-sceneBounds.getStartX());
 
         float scale = 1;
         boolean useWidth = (sceneWidth > sceneHeight);
@@ -165,27 +165,27 @@ public class Pipeline {
      */
     public static EdgeList computeEdgeList(Polygon poly) {
         Vector3D[] polygonVerticies = {poly.getVertices()[0], poly.getVertices()[1], poly.getVertices()[2]};
-        int minY = Integer.MAX_VALUE;
-        int maxY = -Integer.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
         for(int i = 0;i<3;i++){
             if(polygonVerticies[i].y>maxY){
-                maxY = Math.round(poly.getVertices()[i].y);
+                maxY = poly.getVertices()[i].y;
             }
             if(polygonVerticies[i].y<minY){
-                minY = Math.round(poly.getVertices()[i].y);
+                minY = poly.getVertices()[i].y;
             }
         }
         EdgeList newEdgeList = new EdgeList(minY, maxY);
         for (int i = 0; i < polygonVerticies.length ; i ++) {
             Vector3D a = polygonVerticies[i];
             Vector3D b = polygonVerticies[(i+1)%3];
-            float xSlope = (b.x - a.x) / (b.y - a.y);
-            float zSlope = (b.z - a.z) / (b.y - a.y);
+            float xSlope = (b.x - a.x) / ((int)b.y - (int)a.y);
+            float zSlope = (b.z - a.z) / ((int)b.y - (int)a.y);
             float x = a.x;
-            int y = Math.round(a.y);
+            int y = (int)a.y;
             float z = a.z;
             if (a.y < b.y) {
-                while (y <= Math.round(b.y)) {
+                while (y <= (int)b.y) {
                     newEdgeList.setLeftX(y, x);
                     newEdgeList.setLeftZ(y, z);
                     z += zSlope;
@@ -193,7 +193,7 @@ public class Pipeline {
                     y++;
                 }
             } else {
-                while (y >= Math.round(b.y)) {
+                while (y >= (int)b.y) {
                     newEdgeList.setRightX(y, x);
                     newEdgeList.setRightZ(y, z);
                     z -= zSlope;
@@ -222,9 +222,9 @@ public class Pipeline {
     public static void computeZBuffer(Color[][] zbuffer, float[][] zdepth, EdgeList polyEdgeList, Color polyColor) {
         for (int y = polyEdgeList.getStartY(); y < polyEdgeList.getEndY(); y++) {
             float slope = (polyEdgeList.getRightZ(y) - polyEdgeList.getLeftZ(y)) / (polyEdgeList.getRightX(y) - polyEdgeList.getLeftX(y));
-            int x = Math.round(polyEdgeList.getLeftX(y));
+            int x = (int)polyEdgeList.getLeftX(y);
             float z = polyEdgeList.getLeftZ(y);
-            while (x <= Math.round(polyEdgeList.getRightX(y)) - 1) {
+            while (x <= (int)polyEdgeList.getRightX(y) - 1) {
                 if ((y>=0&&x>=0&&y<GUI.CANVAS_HEIGHT&&x<GUI.CANVAS_WIDTH)&&z < zdepth[x][y]) {
                     zbuffer[x][y] = polyColor;
                     zdepth[x][y] = z;
@@ -240,18 +240,18 @@ public class Pipeline {
      * @param scene The scene to get the bounds of
      * @return
      */
-    public static Rectangle getSceneBounds(Scene scene){
-        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
-        int maxX = -Integer.MAX_VALUE, maxY = -Integer.MAX_VALUE;
+    public static Line getSceneBounds(Scene scene){
+        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
         for (Polygon p : scene.getPolygons()) {
             for (Vector3D v : p.getVertices()) {
-                minX = Math.min(minX,(int)v.x);
-                minY = Math.min(minY,(int) v.y);
-                maxX = Math.max(maxX, (int)v.x);
-                maxY = Math.max(maxY, (int)v.y);
+                minX = Math.min(minX,v.x);
+                minY = Math.min(minY, v.y);
+                maxX = Math.max(maxX, v.x);
+                maxY = Math.max(maxY, v.y);
             }
         }
-        return new Rectangle(minX,minY,maxX-minX,maxY-minY);
+        return new Line(minX,minY,maxX,maxY);
     }
 
     /**

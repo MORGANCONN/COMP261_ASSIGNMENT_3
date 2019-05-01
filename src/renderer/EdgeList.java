@@ -17,9 +17,9 @@ public class EdgeList {
     public List<HashMap<Integer, Float>> max = new ArrayList<>();
     private int startY, endY;
 
-    public EdgeList(int startY, int endY) {
-        this.startY = startY;
-        this.endY = endY;
+    public EdgeList(float startY, float endY) {
+        this.startY = (int)startY;
+        this.endY = (int)endY;
         min.add(new HashMap<Integer, Float>());
         min.add(new HashMap<Integer, Float>());
         max.add(new HashMap<Integer, Float>());

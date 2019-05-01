@@ -53,6 +53,9 @@ public class Renderer extends GUI {
 
     @Override
     protected void onKeyPress(KeyEvent ev) {
+        if(scene==null){
+            return;
+        }
         if(ev.getKeyCode() == KeyEvent.VK_UP || ev.getKeyCode() == KeyEvent.VK_W){
             scene = Pipeline.rotateScene(scene,(float)Math.toRadians(-2),0);
         } else if(ev.getKeyCode() == KeyEvent.VK_DOWN || ev.getKeyCode() == KeyEvent.VK_S){
@@ -74,6 +77,7 @@ public class Renderer extends GUI {
         if (scene == null) {
             return null;
         }
+        scene = Pipeline.translateScene(scene);
         scene = Pipeline.scaleScene(scene);
         scene = Pipeline.translateScene(scene);
         Color[][] renderedImg = new Color[CANVAS_WIDTH][CANVAS_HEIGHT];
