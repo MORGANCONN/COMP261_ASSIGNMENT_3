@@ -62,18 +62,20 @@ public class Renderer extends GUI {
         } else if(ev.getKeyCode() == KeyEvent.VK_RIGHT || ev.getKeyCode() == KeyEvent.VK_D){
             scene = Pipeline.rotateScene(scene,0,(float)Math.toRadians(-2));
         }
-        /*
-         * This method should be used to rotate the user's viewpoint.
-         */
     }
-
+    /**
+     * This method should put together the pieces of your renderer, as
+     * described in the lecture. This will involve calling each of the
+     * static method stubs in the Pipeline class, which you also need to
+     * fill in.
+     **/
     @Override
     protected BufferedImage render() {
         if (scene == null) {
             return null;
         }
-        scene = Pipeline.translateScene(scene);
         scene = Pipeline.scaleScene(scene);
+        scene = Pipeline.translateScene(scene);
         Color[][] renderedImg = new Color[CANVAS_WIDTH][CANVAS_HEIGHT];
         float[][] zDepth = new float[CANVAS_WIDTH][CANVAS_HEIGHT];
         for (int y = 0; y < CANVAS_HEIGHT; y++) {
@@ -89,12 +91,7 @@ public class Renderer extends GUI {
                 Pipeline.computeZBuffer(renderedImg, zDepth, polgonEdgeList, shadedColor);
             }
         }
-        /*
-         * This method should put together the pieces of your renderer, as
-         * described in the lecture. This will involve calling each of the
-         * static method stubs in the Pipeline class, which you also need to
-         * fill in.
-         */
+
         return convertBitmapToImage(renderedImg);
     }
 

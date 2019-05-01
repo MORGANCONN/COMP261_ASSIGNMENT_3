@@ -20,12 +20,11 @@ public class EdgeList {
     public EdgeList(int startY, int endY) {
         this.startY = startY;
         this.endY = endY;
-        min.add(new HashMap<Integer,Float>());
-        min.add(new HashMap<Integer,Float>());
-        max.add(new HashMap<Integer,Float>());
-        max.add(new HashMap<Integer,Float>());
+        min.add(new HashMap<Integer, Float>());
+        min.add(new HashMap<Integer, Float>());
+        max.add(new HashMap<Integer, Float>());
+        max.add(new HashMap<Integer, Float>());
     }
-
 
 
     public int getStartY() {
@@ -43,9 +42,9 @@ public class EdgeList {
         return 0;
     }
 
-    public void setLeftX(int y, float x){
-        if(min.get(0).containsKey(y)){
-            max.get(0).replace(y,x);
+    public void setLeftX(int y, float x) {
+        if (min.get(0).containsKey(y)) {
+            max.get(0).replace(y, x);
         } else {
             min.get(0).put(y, x);
         }
@@ -58,9 +57,9 @@ public class EdgeList {
         return 0;
     }
 
-    public void setRightX(int y, float x){
-        if(max.get(0).containsKey(y)){
-            max.get(0).replace(y,x);
+    public void setRightX(int y, float x) {
+        if (max.get(0).containsKey(y)) {
+            max.get(0).replace(y, x);
         } else {
             max.get(0).put(y, x);
         }
@@ -73,9 +72,9 @@ public class EdgeList {
         return 0;
     }
 
-    public void setLeftZ(int y, float z){
-        if(min.get(1).containsKey(y)){
-            min.get(1).replace(y,z);
+    public void setLeftZ(int y, float z) {
+        if (min.get(1).containsKey(y)) {
+            min.get(1).replace(y, z);
         } else {
             min.get(1).put(y, z);
         }
@@ -88,12 +87,13 @@ public class EdgeList {
         return 0;
     }
 
-    public void setRightZ(int y, float z){
-        if(max.get(1).containsKey(y)){
-            max.get(1).replace(y,z);
+    public void setRightZ(int y, float z) {
+        if (max.get(1).containsKey(y)) {
+            max.get(1).replace(y, z);
         } else {
             max.get(1).put(y, z);
-        }    }
+        }
+    }
 }
 
 // code for comp261 assignments

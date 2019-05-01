@@ -1,10 +1,12 @@
 package renderer;
 
-import java.awt.Color;
+import java.awt.*;
+import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import javafx.scene.shape.Line;
 import renderer.Scene.Polygon;
 
 /**
@@ -22,12 +24,7 @@ public class Pipeline {
      * should be hidden), and false otherwise.
      */
     public static boolean isHidden(Polygon poly) {
-        // V2-V1
-        Vector3D tempVector1 = poly.getVertices()[1].minus(poly.getVertices()[0]);
-        // V3-V2
-        Vector3D tempVector2 = poly.getVertices()[2].minus(poly.getVertices()[1]);
-        // (V2-V1)X(V3-V2)
-        Vector3D normal = tempVector1.crossProduct(tempVector2).unitVector();
+        Vector3D normal = calculateNormal(poly);
         if (normal.z > 0) {
             return true;
         } else {
@@ -50,12 +47,7 @@ public class Pipeline {
         int[] ambientLightValues = {ambientLight.getRed(), ambientLight.getGreen(), ambientLight.getBlue()};
         int[] reflectanceValues = {poly.reflectance.getRed(), poly.reflectance.getGreen(), poly.reflectance.getBlue()};
         int[] incidentValues = {lightColor.getRed(), lightColor.getGreen(), lightColor.getBlue()};
-        // V2-V1
-        Vector3D tempVector1 = poly.getVertices()[1].minus(poly.getVertices()[0]);
-        // V3-V2
-        Vector3D tempVector2 = poly.getVertices()[2].minus(poly.getVertices()[1]);
-        // (V2-V1)X(V3-V2)
-        Vector3D normal = tempVector1.crossProduct(tempVector2);
+        Vector3D normal = calculateNormal(poly);
         float cosOfVector = lightDirection.cosTheta(normal);
         List<Integer> shade = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
@@ -131,7 +123,7 @@ public class Pipeline {
             }
         }
         List<Polygon> translatedPolygons = new ArrayList<>(scene.getPolygons());
-        Transform translate = Transform.newTranslation(new Vector3D(-xTranslationAmount, -yTranslationAmount, 0));
+        Transform translate = Transform.newTranslation(new Vector3D(-(xTranslationAmount-(GUI.CANVAS_WIDTH/8)), -(yTranslationAmount-(GUI.CANVAS_WIDTH/8)), 0));
         for (Polygon p : translatedPolygons) {
             for (int i = 0; i < 3; i++) {
                 p.getVertices()[i] = translate.multiply(p.getVertices()[i]);
@@ -141,63 +133,30 @@ public class Pipeline {
     }
 
     /**
-     * Finds the max and min x and y values of the vectors of the polygons of the supplied scene
-     *
-     * @param scene the scene object to find the max and min x and y coordinates
-     */
-    public static float[] findSceneMinMax(Scene scene) {
-        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE;
-        float minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
-        for (Polygon p : scene.getPolygons()) {
-            for (Vector3D v : p.getVertices()) {
-                minX = Math.min(minX, v.x);
-                minY = Math.min(minY, v.y);
-                maxX = Math.max(maxX, v.x);
-                maxY = Math.max(maxY, v.y);
-            }
-        }
-        float[] maxAndMin = {minX, maxX, minY, maxY};
-        return maxAndMin;
-    }
-
-    /**
-     * This should scale the scene.
-     *
-     * @param scene
+     * This scales the scene so it all fits within the bounds of the canvas
+     * @param scene the scene to scale
      * @return
      */
     public static Scene scaleScene(Scene scene) {
-        float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE;
-        float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
-        for (Polygon p : scene.getPolygons()) {
-            for (Vector3D v : p.getVertices()) {
-                minX = Math.min(minX, v.x);
-                minY = Math.min(minY, v.y);
-                maxX = Math.max(maxX, v.x);
-                maxY = Math.max(maxY, v.y);
-            }
-        }
-        float sceneHeight = maxY - minY;
-        float sceneWidth = maxX - minX;
+        Rectangle sceneBounds = getSceneBounds(scene);
+        float sceneHeight = sceneBounds.height;
+        float sceneWidth = sceneBounds.width;
 
         float scale = 1;
-        boolean useWidth = (sceneWidth - GUI.CANVAS_WIDTH > sceneHeight - GUI.CANVAS_HEIGHT);
-        if (sceneWidth > GUI.CANVAS_WIDTH && useWidth) {
-            scale = GUI.CANVAS_WIDTH / sceneWidth;
+        boolean useWidth = (sceneWidth > sceneHeight);
+        if (useWidth) {
+            scale = ((GUI.CANVAS_WIDTH - (GUI.CANVAS_WIDTH / 4)) / sceneWidth);
+        } else {
+            scale = ((GUI.CANVAS_HEIGHT - (GUI.CANVAS_WIDTH / 4)) / sceneHeight);
         }
-        if (sceneHeight > GUI.CANVAS_HEIGHT && !useWidth) {
-            scale = GUI.CANVAS_HEIGHT / sceneHeight;
-        }
-
-        Transform scaleMatrix = Transform.newScale(scale, scale, scale);
-
+        Transform matrixScalar = Transform.newScale(scale, scale, scale);
         ArrayList<Polygon> scaledPolygons = new ArrayList<>(scene.getPolygons());
         for (Polygon p : scaledPolygons) {
             for (int i = 0; i < 3; i++) {
-                p.getVertices()[i] = scaleMatrix.multiply(p.getVertices()[i]);
+                p.getVertices()[i] = matrixScalar.multiply(p.getVertices()[i]);
             }
         }
-        return new Scene(scaledPolygons, scaleMatrix.multiply(scene.getLight()));
+        return new Scene(scaledPolygons, matrixScalar.multiply(scene.getLight()));
     }
 
     /**
@@ -275,6 +234,41 @@ public class Pipeline {
             }
         }
     }
+
+    /**
+     * Returns a rectangle that represents the bounds of the scene
+     * @param scene The scene to get the bounds of
+     * @return
+     */
+    public static Rectangle getSceneBounds(Scene scene){
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+        int maxX = -Integer.MAX_VALUE, maxY = -Integer.MAX_VALUE;
+        for (Polygon p : scene.getPolygons()) {
+            for (Vector3D v : p.getVertices()) {
+                minX = Math.min(minX,(int)v.x);
+                minY = Math.min(minY,(int) v.y);
+                maxX = Math.max(maxX, (int)v.x);
+                maxY = Math.max(maxY, (int)v.y);
+            }
+        }
+        return new Rectangle(minX,minY,maxX-minX,maxY-minY);
+    }
+
+    /**
+     * Calculates the normal of the supplied polygon
+     * @param poly the polygon to get the normal vector3d of
+     * @return
+     */
+    public static Vector3D calculateNormal(Polygon poly){
+        // V2-V1
+        Vector3D tempVector1 = poly.getVertices()[1].minus(poly.getVertices()[0]);
+        // V3-V2
+        Vector3D tempVector2 = poly.getVertices()[2].minus(poly.getVertices()[1]);
+        // (V2-V1)X(V3-V2)
+        return tempVector1.crossProduct(tempVector2).unitVector();
+    }
+
+
 }
 
 // code for comp261 assignments
